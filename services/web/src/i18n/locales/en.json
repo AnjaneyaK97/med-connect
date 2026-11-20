@@ -1,0 +1,76 @@
+{
+  "common": {
+    "appName": "MediConnect",
+    "tagline": "Omnichannel AI Healthcare Platform",
+    "disclaimer": "Clinical Decision Support Prototype: AI assists clinicians and never replaces them. All triage summaries and SOAP notes are drafts requiring human clinician review. Not for emergency use.",
+    "emergencyNotice": "If you are experiencing life-threatening symptoms (e.g. chest pain, difficulty breathing, stroke symptoms), call emergency services immediately.",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "logout": "Log Out",
+    "login": "Log In",
+    "register": "Register",
+    "role": "Role",
+    "language": "Language",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "nav": {
+    "home": "Home",
+    "patientDashboard": "Patient Portal",
+    "doctorDashboard": "Doctor Clinical Queue",
+    "adminPanel": "Admin Console",
+    "startTriage": "Start AI Triage",
+    "appointments": "Appointments",
+    "consents": "Consent Settings"
+  },
+  "auth": {
+    "loginTitle": "Welcome Back to MediConnect",
+    "loginSubtitle": "Access your health records or clinical dashboard",
+    "registerTitle": "Create Your Account",
+    "registerSubtitle": "Join MediConnect as a Patient or Healthcare Provider",
+    "email": "Email Address",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number",
+    "rolePatient": "Patient",
+    "roleDoctor": "Doctor / Clinician",
+    "specialization": "Medical Specialization",
+    "licenseNumber": "Medical License Number",
+    "consultationFee": "Consultation Fee ($)",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already registered?",
+    "registerNow": "Register here",
+    "loginNow": "Log in here"
+  },
+  "patient": {
+    "welcome": "Welcome back",
+    "quickTriage": "AI-Assisted Triage",
+    "quickTriageDesc": "Describe your symptoms by voice or text. Get instant triage insights reviewed by licensed clinicians.",
+    "startTriageBtn": "Start Voice/Text Triage",
+    "recentSessions": "Recent Triage Sessions",
+    "upcomingAppointments": "Upcoming Appointments",
+    "noSessions": "No triage sessions recorded yet.",
+    "noAppointments": "No upcoming appointments scheduled."
+  },
+  "doctor": {
+    "clinicalQueue": "Clinical Triage & Note Review Queue",
+    "urgentCases": "Urgent Cases (Red-Flag Escalation)",
+    "pendingNotes": "Pending AI Clinical Notes (SOAP)",
+    "patientList": "Assigned Patients",
+    "reviewNote": "Review & Approve Note",
+    "severity": "Severity",
+    "patient": "Patient",
+    "symptoms": "Symptoms",
+    "actions": "Actions"
+  },
+  "admin": {
+    "title": "System Administration & Audit",
+    "totalUsers": "Total Users",
+    "verifiedDoctors": "Verified Doctors",
+    "auditTrail": "Immutable Audit Trail",
+    "systemHealth": "System Services Health"
+  }
+}

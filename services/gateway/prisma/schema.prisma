@@ -1,0 +1,280 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TriageStatus {
+  STARTED
+  TRANSCRIBING
+  TRIAGING
+  COMPLETED
+  FAILED
+}
+
+enum TriageSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum NoteStatus {
+  DRAFT
+  APPROVED
+  REVISED
+}
+
+enum ConsentScope {
+  FULL
+  TRIAGE_ONLY
+  SUMMARY_ONLY
+}
+
+enum NotificationType {
+  URGENT_FLAG
+  APPOINTMENT
+  NOTE_READY
+  SYSTEM
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  role         Role           @default(PATIENT)
+  firstName    String
+  lastName     String
+  phoneNumber  String?
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  patient      Patient?
+  doctor       Doctor?
+  refreshTokens RefreshToken[]
+  auditLogs    AuditLog[]
+  notifications Notification[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Patient {
+  id                    String          @id @default(uuid())
+  userId                String          @unique
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth           DateTime?
+  gender                String?
+  bloodGroup            String?
+  emergencyContact      String?
+  medicalHistorySummary String?         // encrypted in Phase 3
+  allergies             String?         // encrypted in Phase 3
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  appointments          Appointment[]
+  triageSessions        TriageSession[]
+  clinicalNotes         ClinicalNote[]
+  consents              Consent[]
+
+  @@index([userId])
+}
+
+model Doctor {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialization  String
+  licenseNumber   String         @unique
+  isVerified      Boolean        @default(false)
+  consultationFee Float          @default(0.0)
+  bio             String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  appointments    Appointment[]
+  clinicalNotes   ClinicalNote[]
+  consents        Consent[]
+
+  @@index([userId])
+  @@index([specialization])
+  @@index([isVerified])
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  patientId   String
+  patient     Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId    String
+  doctor      Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime
+  status      AppointmentStatus @default(SCHEDULED)
+  reason      String?
+  meetingLink String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model TriageSession {
+  id             String          @id @default(uuid())
+  patientId      String
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status         TriageStatus    @default(STARTED)
+  language       String          @default("en")
+  chiefComplaint String?
+  severity       TriageSeverity?
+  isRedFlag      Boolean         @default(false)
+  summaryJson    Json?           // Structured triage: symptoms, duration, red flags
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  transcript     Transcript?
+  clinicalNotes  ClinicalNote[]
+
+  @@index([patientId])
+  @@index([status])
+  @@index([isRedFlag])
+  @@index([createdAt])
+}
+
+model Transcript {
+  id                  String        @id @default(uuid())
+  triageSessionId     String        @unique
+  triageSession       TriageSession @relation(fields: [triageSessionId], references: [id], onDelete: Cascade)
+  rawAudioUrl         String?
+  encryptedTranscript String?       // AES-256 field level encrypted
+  scrubbedTranscript  String?       // PII sanitized version for LLM ingestion
+  language            String        @default("en")
+  durationSeconds     Int           @default(0)
+  createdAt           DateTime      @default(now())
+
+  @@index([triageSessionId])
+}
+
+model ClinicalNote {
+  id                   String        @id @default(uuid())
+  triageSessionId      String?
+  triageSession        TriageSession? @relation(fields: [triageSessionId], references: [id], onDelete: SetNull)
+  patientId            String
+  patient              Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId             String
+  doctor               Doctor        @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  status               NoteStatus    @default(DRAFT)
+  subjectiveEncrypted  String?       // Encrypted field
+  objectiveEncrypted   String?       // Encrypted field
+  assessmentEncrypted  String?       // Encrypted field
+  planEncrypted        String?       // Encrypted field
+  aiGeneratedDraftJson Json?         // Original draft with RAG citations
+  finalContentJson     Json?         // Doctor edited and approved version
+  diffSummary          String?       // Summary of physician edits vs AI draft
+  approvedAt           DateTime?
+  version              Int           @default(1)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+model Consent {
+  id            String       @id @default(uuid())
+  patientId     String
+  patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId      String
+  doctor        Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  accessGranted Boolean      @default(true)
+  scope         ConsentScope @default(FULL)
+  expiresAt     DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@unique([patientId, doctorId])
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+model Notification {
+  id           String           @id @default(uuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  message      String
+  type         NotificationType @default(SYSTEM)
+  isRead       Boolean          @default(false)
+  metadataJson Json?
+  createdAt    DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorId      String?
+  user         User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorRole    Role?
+  action       String   // e.g. "AUTH_LOGIN", "NOTE_READ", "CONSENT_REVOKE"
+  resourceType String   // e.g. "PATIENT_RECORD", "CLINICAL_NOTE"
+  resourceId   String?
+  ipAddress    String?
+  userAgent    String?
+  detailsJson  Json?
+  createdAt    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+}
+
+model KnowledgeDocument {
+  id               String   @id @default(uuid())
+  title            String
+  category         String   // e.g. "Cardiology", "Pediatrics", "Emergency"
+  sourceUrl        String?
+  chromaCollection String   @default("medical_guidelines")
+  chunkCount       Int      @default(0)
+  metadataJson     Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([category])
+  @@index([chromaCollection])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}

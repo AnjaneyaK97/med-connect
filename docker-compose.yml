@@ -1,0 +1,161 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mediconnect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mediconnect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mediconnect_secret_change_in_prod}
+      POSTGRES_DB: ${POSTGRES_DB:-mediconnect_db}
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mediconnect} -d ${POSTGRES_DB:-mediconnect_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediconnect-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: mediconnect-redis
+    restart: unless-stopped
+    ports:
+      - "56379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediconnect-net
+
+  chromadb:
+    image: chromadb/chroma:0.4.24
+    container_name: mediconnect-chromadb
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediconnect-net
+
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    container_name: mediconnect-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediconnect-net
+
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: mediconnect-gateway
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=4000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-mediconnect}:${POSTGRES_PASSWORD:-mediconnect_secret_change_in_prod}@postgres:5432/${POSTGRES_DB:-mediconnect_db}?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_SERVICE_URL=http://ai-service:8000
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-mediconnect_jwt_access_super_secret_key_32bytes_min!}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-mediconnect_jwt_refresh_super_secret_key_32bytes_min!}
+      - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediconnect-net
+
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    container_name: mediconnect-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=/api/v1
+      - VITE_WS_URL=/ws
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      - mediconnect-net
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: mediconnect-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+      - gateway
+    networks:
+      - mediconnect-net
+
+networks:
+  mediconnect-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:

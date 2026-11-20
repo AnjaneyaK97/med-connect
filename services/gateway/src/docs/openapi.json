@@ -1,0 +1,267 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MediConnect Gateway API",
+    "version": "1.0.0",
+    "description": "Core Orchestration and Gateway API for MediConnect Omnichannel AI Healthcare Platform with AES-256 Envelope Encryption, PostgreSQL RLS, RBAC, BullMQ Async Queues, and WebSocket Multiplexing.",
+    "contact": {
+      "name": "MediConnect Clinical Platform Engineering",
+      "email": "support@mediconnect.local"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Local Gateway Service"
+    },
+    {
+      "url": "http://localhost/api/v1",
+      "description": "Reverse Proxy (Nginx Ingress)"
+    }
+  ],
+  "tags": [
+    { "name": "Health", "description": "Liveness, readiness, and Prometheus telemetry" },
+    { "name": "Authentication", "description": "JWT authentication and refresh token rotation" },
+    { "name": "Triage & STT", "description": "Audio ingestion, Whisper transcription, and red-flag screening" },
+    { "name": "Clinical Notes", "description": "RAG-driven SOAP drafting, physician diff tracking, and sign-off" },
+    { "name": "Appointments", "description": "Doctor booking and telehealth scheduling" },
+    { "name": "Consent Management", "description": "Patient PHI granular access granting and revocation" },
+    { "name": "Audit & Administration", "description": "Immutable compliance trail and system telemetry" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness check",
+        "responses": {
+          "200": { "description": "Service is live" }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Readiness check",
+        "responses": {
+          "200": { "description": "Database and Redis are connected" },
+          "503": { "description": "Downstream dependency unavailable" }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Prometheus Plaintext Metrics",
+        "responses": {
+          "200": { "description": "Prometheus metrics scrapable payload" }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new patient or doctor account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "firstName", "lastName", "role"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "role": { "type": "string", "enum": ["PATIENT", "DOCTOR"] },
+                  "phoneNumber": { "type": "string" },
+                  "specialization": { "type": "string" },
+                  "licenseNumber": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created and access tokens returned" },
+          "400": { "description": "Validation error" },
+          "409": { "description": "Email already registered" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Authenticate user credentials",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful; JWT access token and refresh token returned" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/triage/audio": {
+      "post": {
+        "tags": ["Triage & STT"],
+        "summary": "Upload voice recording for asynchronous Whisper transcription",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "audio": { "type": "string", "format": "binary" },
+                  "language": { "type": "string", "default": "en" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Audio accepted; queued in background with job tracking ID" }
+        }
+      }
+    },
+    "/api/v1/triage/analyze": {
+      "post": {
+        "tags": ["Triage & STT"],
+        "summary": "Run deterministic red-flag screening and structured symptom analysis",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["transcript"],
+                "properties": {
+                  "transcript": { "type": "string" },
+                  "language": { "type": "string", "default": "en" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Structured triage summary and red-flag evaluation returned" }
+        }
+      }
+    },
+    "/api/v1/notes/draft": {
+      "post": {
+        "tags": ["Clinical Notes"],
+        "summary": "Generate RAG-grounded draft clinical SOAP note",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["triageSessionId"],
+                "properties": {
+                  "triageSessionId": { "type": "string", "format": "uuid" },
+                  "doctorId": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Draft clinical note generated, envelope-encrypted, and saved" }
+        }
+      }
+    },
+    "/api/v1/notes/{id}/approve": {
+      "put": {
+        "tags": ["Clinical Notes"],
+        "summary": "Physician edits and approves SOAP note (Human-in-the-Loop Sign-off)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["subjective", "objective", "assessment", "plan"],
+                "properties": {
+                  "subjective": { "type": "string" },
+                  "objective": { "type": "string" },
+                  "assessment": { "type": "string" },
+                  "plan": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Note signed, diff tracked, and status set to APPROVED" }
+        }
+      }
+    },
+    "/api/v1/consents": {
+      "post": {
+        "tags": ["Consent Management"],
+        "summary": "Grant doctor access to patient medical records",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["doctorId", "scope"],
+                "properties": {
+                  "doctorId": { "type": "string", "format": "uuid" },
+                  "scope": { "type": "string", "enum": ["FULL", "TRIAGE_ONLY", "SUMMARY_ONLY"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Consent recorded and logged to immutable audit trail" }
+        }
+      }
+    },
+    "/api/v1/admin/audit-logs": {
+      "get": {
+        "tags": ["Audit & Administration"],
+        "summary": "Retrieve immutable PHI access audit log entries (Admin only)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Audit trail log records returned" },
+          "403": { "description": "Forbidden (Requires ADMIN role)" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
