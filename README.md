@@ -16,23 +16,23 @@ MediConnect is structured as a resilient, security-first microservices platform 
 ```mermaid
 flowchart TB
     subgraph Client ["Client Layer"]
-        Web["Web Client (React 18 + Vite + Tailwind CSS)\n• Audio Voice Recorder (MediaRecorder)\n• i18n Multilingual UI (EN, HI)\n• Real-Time WS Listener"]
+        Web["Web Client (React 18 + Vite + Tailwind CSS)<br/>Audio Voice Recorder (MediaRecorder)<br/>i18n Multilingual UI (EN, HI)<br/>Real-Time WS Listener"]
     end
 
     subgraph Ingress ["Edge & Reverse Proxy"]
-        Nginx["Nginx Reverse Proxy (:80)\n• Upstream load balancing\n• Path-based routing & WebSocket upgrades\n• Strict security headers"]
+        Nginx["Nginx Reverse Proxy (:80)<br/>Upstream load balancing<br/>Path-based routing and WebSocket upgrades<br/>Strict security headers"]
     end
 
     subgraph Services ["Application Services"]
-        Gateway["Core Gateway API (Node.js/Express/TypeScript)\n• JWT Auth (Access + Refresh Rotation)\n• RBAC & Consent Verification\n• WebSocket Gateway & Redis Pub/Sub\n• BullMQ Job Orchestrator\n• Immutable PHI Audit Logging"]
-        AIService["AI Service (FastAPI / Python 3.11)\n• OpenAI Whisper STT (Auto language detection)\n• Deterministic Red-Flag Rule Engine\n• Pre-LLM PII Sanitizer / Detokenizer\n• ChromaDB RAG Knowledge Retrieval\n• Ollama (Llama-3) SOAP Note Drafter"]
+        Gateway["Core Gateway API (Node.js/Express/TypeScript)<br/>JWT Auth (Access + Refresh Rotation)<br/>RBAC and Consent Verification<br/>WebSocket Gateway and Redis Pub/Sub<br/>BullMQ Job Orchestrator<br/>Immutable PHI Audit Logging"]
+        AIService["AI Service (FastAPI / Python 3.11)<br/>OpenAI Whisper STT (Auto language detection)<br/>Deterministic Red-Flag Rule Engine<br/>Pre-LLM PII Sanitizer / Detokenizer<br/>ChromaDB RAG Knowledge Retrieval<br/>Ollama (Llama-3) SOAP Note Drafter"]
     end
 
     subgraph Data ["Persistence & Caching"]
-        Postgres[(PostgreSQL 16\n• Row-Level Security Policies\n• Field-Level Envelope Encryption (AES-256)\n• Consents & Audit Trail)]
-        Redis[(Redis 7\n• Pub/Sub for WebSockets\n• Session & Availability Cache\n• Rate Limiting & Job Queue)]
-        Chroma[(ChromaDB Vector Store\n• Medical guidelines\n• Clinical templates)]
-        Ollama["Ollama Daemon\n(Local Llama-3 Inference)"]
+        Postgres[("PostgreSQL 16<br/>Row-Level Security Policies<br/>Field-Level Envelope Encryption (AES-256)<br/>Consents and Audit Trail")]
+        Redis[("Redis 7<br/>Pub/Sub for WebSockets<br/>Session and Availability Cache<br/>Rate Limiting and Job Queue")]
+        Chroma[("ChromaDB Vector Store<br/>Medical guidelines<br/>Clinical templates")]
+        Ollama["Ollama Daemon<br/>(Local Llama-3 Inference)"]
     end
 
     Web -->|HTTP & WebSocket| Nginx
