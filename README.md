@@ -35,10 +35,10 @@ flowchart TB
         Ollama["Ollama Daemon<br/>(Local Llama-3 Inference)"]
     end
 
-    Web -->|HTTP & WebSocket| Nginx
-    Nginx -->|/api/v1/*, /ws| Gateway
-    Nginx -->|/| Web
-    Gateway -->|HTTP (Internal)| AIService
+    Web --> Nginx
+    Nginx --> Gateway
+    Nginx --> Web
+    Gateway --> AIService
     Gateway --> Postgres
     Gateway --> Redis
     AIService --> Chroma
