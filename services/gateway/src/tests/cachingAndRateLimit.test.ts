@@ -48,6 +48,7 @@ describe('Phase 11: Caching, Rate Limiting & Observability', () => {
       const mockRes: Partial<Response> = {
         setHeader: (k: string, v: any) => {
           headers[k] = v;
+          return mockRes as Response;
         },
       };
       const next = jest.fn();

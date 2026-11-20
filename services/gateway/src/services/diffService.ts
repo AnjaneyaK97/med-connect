@@ -5,9 +5,24 @@ export interface SoapDiff {
   planChanged: boolean;
   changesSummary: string;
   totalWordsModified: number;
+  hasModifications: boolean;
+  sectionChanges: {
+    subjective: { status: 'MODIFIED' | 'UNCHANGED' };
+    objective: { status: 'MODIFIED' | 'UNCHANGED' };
+    assessment: { status: 'MODIFIED' | 'UNCHANGED' };
+    plan: { status: 'MODIFIED' | 'UNCHANGED' };
+  };
+  summary: string;
 }
 
 export class DiffService {
+  public static calculateDiff(
+    original: { subjective?: string; objective?: string; assessment?: string; plan?: string },
+    finalContent: { subjective?: string; objective?: string; assessment?: string; plan?: string }
+  ): SoapDiff {
+    return this.calculateSoapDiff(original, finalContent);
+  }
+
   /**
    * Calculates diff between original AI draft and doctor-approved final content.
    */
@@ -47,6 +62,16 @@ export class DiffService {
       planChanged,
       changesSummary,
       totalWordsModified,
+      hasModifications: changedSections.length > 0,
+      sectionChanges: {
+        subjective: { status: subjectiveChanged ? 'MODIFIED' : 'UNCHANGED' },
+        objective: { status: objectiveChanged ? 'MODIFIED' : 'UNCHANGED' },
+        assessment: { status: assessmentChanged ? 'MODIFIED' : 'UNCHANGED' },
+        plan: { status: planChanged ? 'MODIFIED' : 'UNCHANGED' },
+      },
+      summary: changedSections.length > 0
+        ? `Clinician modified sections: ${changedSections.join(', ')}.`
+        : 'No sections modified.',
     };
   }
 }

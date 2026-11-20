@@ -2,7 +2,6 @@ import time
 from typing import Dict, List, Any
 from app.services.red_flag_engine import RedFlagEngine
 from app.services.pii_sanitizer import PiiSanitizer
-from app.services.knowledge_service import KnowledgeService
 from app.services.rag_service import RagService
 
 # Standardized Clinical Evaluation Benchmark Cases

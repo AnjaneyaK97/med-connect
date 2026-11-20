@@ -1,7 +1,6 @@
-import os
 import re
 import logging
-from typing import List, Dict, Any
+from typing import Dict, Any
 from app.core.config import settings
 
 logger = logging.getLogger("knowledge_service")

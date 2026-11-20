@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 from app.services.pii_sanitizer import PiiSanitizer
 from app.services.knowledge_service import KnowledgeService

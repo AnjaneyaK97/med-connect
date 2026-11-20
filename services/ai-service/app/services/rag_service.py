@@ -25,8 +25,6 @@ class RagService:
         Synchronous SOAP note generator for high-reliability pipelines and isolated unit testing.
         """
         patient_info = patient_info or {}
-        patient_age = patient_info.get("age", 40)
-        patient_gender = patient_info.get("gender", "Unspecified")
 
         # 1. Pre-LLM PII Sanitization
         sanitized_transcript, token_map = PiiSanitizer.sanitize(
@@ -72,7 +70,6 @@ class RagService:
         language: str = "en",
     ) -> Dict[str, Any]:
         patient_info = patient_info or {}
-        patient_name = patient_info.get("name", "Patient")
         patient_age = patient_info.get("age", 40)
         patient_gender = patient_info.get("gender", "Unspecified")
 

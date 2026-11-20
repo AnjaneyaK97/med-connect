@@ -41,7 +41,6 @@ class WhisperService:
         # If Whisper package is present and model loaded
         if model != "FALLBACK":
             try:
-                import whisper
                 with tempfile.NamedTemporaryFile(suffix=os.path.splitext(filename)[1], delete=False) as tmp:
                     tmp.write(audio_bytes)
                     tmp_path = tmp.name

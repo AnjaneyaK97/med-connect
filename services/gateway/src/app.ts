@@ -13,6 +13,7 @@ import noteRoutes from './routes/notes';
 import appointmentRoutes from './routes/appointments';
 import consentRoutes from './routes/consents';
 import adminRoutes from './routes/admin';
+import openapiSpec from './docs/openapi.json';
 
 export const createApp = (): Express => {
   const app = express();
@@ -43,8 +44,7 @@ export const createApp = (): Express => {
 
   // OpenAPI Specification endpoint
   app.get(['/openapi.json', '/api/v1/openapi.json'], (_req, res) => {
-    const spec = require('./docs/openapi.json');
-    res.json(spec);
+    res.json(openapiSpec);
   });
 
   // Health and Readiness checks (available at root and /api/v1)

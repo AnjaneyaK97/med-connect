@@ -1,4 +1,3 @@
-import time
 import uuid
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,11 +27,8 @@ app.add_middleware(
 @app.middleware("http")
 async def correlation_and_logging_middleware(request: Request, call_next):
     correlation_id = request.headers.get("x-correlation-id") or str(uuid.uuid4())
-    start_time = time.time()
-    
     response = await call_next(request)
-    duration_ms = round((time.time() - start_time) * 1000, 2)
-    
+
     response.headers["x-correlation-id"] = correlation_id
     
     # We could attach structured logs here

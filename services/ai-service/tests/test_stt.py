@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 from app.services.whisper_service import WhisperService
 
